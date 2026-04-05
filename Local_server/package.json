@@ -1,0 +1,15 @@
+{
+  "name": "smart-energy-server",
+  "version": "1.0.0",
+  "description": "Local WebSocket server for ESP devices, organized with MongoDB storage and global forwarding.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.3.1",
+    "mongoose": "^7.5.2",
+    "ws": "^8.13.0"
+  }
+}

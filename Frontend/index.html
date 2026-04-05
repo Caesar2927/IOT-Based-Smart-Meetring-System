@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Smart Energy Dashboard</title>
+
+<style>
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+  transition:0.3s;
+}
+
+.light{
+  background:#f1f5f9;
+  color:#111;
+}
+
+h1{
+  padding:15px;
+}
+
+/* Toggle */
+.toggle{
+  position:absolute;
+  right:20px;
+  top:20px;
+  cursor:pointer;
+  padding:8px 12px;
+  background:#22c55e;
+  border-radius:8px;
+}
+
+/* Layout */
+.container{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:20px;
+  padding:20px;
+}
+
+/* Card */
+.card{
+  background:#1e293b;
+  padding:20px;
+  width:330px;
+  border-radius:15px;
+  box-shadow:0 0 25px rgba(0,0,0,0.5);
+  transition:0.3s;
+}
+
+.card:hover{
+  transform:scale(1.05);
+}
+
+.light .card{
+  background:white;
+}
+
+/* Buttons */
+button{
+  padding:8px 12px;
+  margin:5px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.on{ background:#22c55e; color:white;}
+.off{ background:#ef4444; color:white;}
+
+.status{ margin:10px; font-weight:bold;}
+.online{ color:#22c55e;}
+.offline{ color:#ef4444;}
+
+.value{
+  margin-top:10px;
+  text-align:left;
+  font-size:14px;
+}
+
+/* Gauge */
+.gauge{
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  background:conic-gradient(#22c55e 0deg, #1e293b 0deg);
+  transition:0.5s;
+}
+
+/* Warning */
+.warning{
+  border:2px solid red;
+}
+
+/* Footer */
+.footer{
+  margin-top:10px;
+  font-size:12px;
+  opacity:0.7;
+}
+</style>
+</head>
+
+<body>
+
+<button class="toggle" onclick="toggleMode()">🌙 Mode</button>
+
+<h1>⚡ Smart Energy Dashboard</h1>
+
+<div class="container">
+
+<!-- ROOM 1 -->
+<div class="card" id="card1">
+<h2>🏠 Room 1</h2>
+<p id="s1" class="status offline">OFFLINE</p>
+
+<div class="gauge" id="g1">0W</div>
+
+<button onclick="ctrl('room1','load1',true)" class="on">LED ON</button>
+<button onclick="ctrl('room1','load1',false)" class="off">OFF</button>
+
+<button onclick="ctrl('room1','load2',true)" class="on">Charger ON</button>
+<button onclick="ctrl('room1','load2',false)" class="off">OFF</button>
+
+<div id="d1" class="value"></div>
+<div id="t1" class="footer"></div>
+</div>
+
+<!-- ROOM 2 -->
+<div class="card" id="card2">
+<h2>🏠 Room 2</h2>
+<p id="s2" class="status offline">OFFLINE</p>
+
+<div class="gauge" id="g2">0W</div>
+
+<button onclick="ctrl('room2','load1',true)" class="on">Laptop ON</button>
+<button onclick="ctrl('room2','load1',false)" class="off">OFF</button>
+
+<button onclick="ctrl('room2','load2',true)" class="on">Fan ON</button>
+<button onclick="ctrl('room2','load2',false)" class="off">OFF</button>
+
+<div id="d2" class="value"></div>
+<div id="t2" class="footer"></div>
+</div>
+
+</div>
+
+<script>
+
+let ws = new WebSocket("ws://10.156.8.130:8080");
+
+/* CONTROL */
+function ctrl(room, device, state){
+  let msg = {type:"control", esp:room};
+  msg[device] = state;
+  ws.send(JSON.stringify(msg));
+}
+
+/* MODE */
+function toggleMode(){
+  document.body.classList.toggle("light");
+}
+
+/* GAUGE */
+function updateGauge(id, power){
+  let deg = Math.min(power / 5, 360);
+  let el = document.getElementById(id);
+
+  let color = power > 500 ? "#ef4444" : "#22c55e";
+
+  el.style.background = `conic-gradient(${color} ${deg}deg, #1e293b ${deg}deg)`;
+  el.innerHTML = power.toFixed(0) + "W";
+}
+
+/* UPDATE UI */
+function updateUI(room, d){
+
+  let text = `
+  ⚡ Voltage: <b>${d.voltage.toFixed(1)} V</b><br>
+  🔌 Current: <b>${d.current.toFixed(2)} A</b><br>
+  💡 Power: <b>${d.power.toFixed(1)} W</b><br>
+  📊 PF: <b>${d.pf.toFixed(2)}</b><br>
+  🔋 Energy: <b>${d.energy.toFixed(3)} kWh</b><br>
+  💰 Cost: <b>₹${d.cost.toFixed(2)}</b><br>
+  🧠 Load: <b>${d.load || "Detecting..."}</b>
+  `;
+
+  document.getElementById("d"+room).innerHTML = text;
+  document.getElementById("t"+room).innerHTML = "⏱ " + new Date().toLocaleTimeString();
+
+  updateGauge("g"+room, d.power);
+
+  // Warning highlight
+  let card = document.getElementById("card"+room);
+  if(d.power > 500){
+    card.classList.add("warning");
+  } else {
+    card.classList.remove("warning");
+  }
+}
+
+/* STATUS */
+function updateStatus(id, status){
+  let el = document.getElementById(id);
+  el.innerText = status;
+  el.className = "status " + (status === "ONLINE" ? "online" : "offline");
+}
+
+/* SOCKET */
+ws.onmessage = (event)=>{
+
+  let d = JSON.parse(event.data);
+
+  if(d.type === "status"){
+    if(d.esp === "room1") updateStatus("s1", d.status);
+    if(d.esp === "room2") updateStatus("s2", d.status);
+  }
+
+  if(d.type === "data"){
+
+    if(d.esp === "room1"){
+      updateUI("1", d);
+      updateStatus("s1","ONLINE");
+    }
+
+    if(d.esp === "room2"){
+      updateUI("2", d);
+      updateStatus("s2","ONLINE");
+    }
+  }
+};
+
+</script>
+
+</body>
+</html>
