@@ -156,12 +156,37 @@ button{
 
 <script>
 
-let ws = new WebSocket("ws://10.156.8.130:8080");
+let ws = new WebSocket("ws://10.156.8.8:8080");
+
+/* WebSocket Connection Events */
+ws.onopen = () => {
+  console.log("✅ WebSocket Connected to server");
+  document.body.style.borderTop = "5px solid #22c55e";
+};
+
+ws.onerror = (error) => {
+  console.error("❌ WebSocket Error:", error);
+  document.body.style.borderTop = "5px solid #ef4444";
+};
+
+ws.onclose = () => {
+  console.log("⚠️ WebSocket Disconnected from server");
+  document.body.style.borderTop = "5px solid #ff9800";
+};
 
 /* CONTROL */
 function ctrl(room, device, state){
+  console.log(`🎮 Button Clicked: ${room} - ${device} - ${state}`);
+  
+  if(ws.readyState !== WebSocket.OPEN){
+    console.error("❌ WebSocket not connected! State:", ws.readyState);
+    alert("❌ Server not connected! Check console.");
+    return;
+  }
+  
   let msg = {type:"control", esp:room};
   msg[device] = state;
+  console.log("📤 Sending:", JSON.stringify(msg));
   ws.send(JSON.stringify(msg));
 }
 

@@ -59,11 +59,15 @@ function createWebSocketServer(port) {
       if (data.type === 'control') {
         const target = espClients[data.esp];
 
+        console.log(`🎮 Control Message Received:`, data);
+        console.log(`📍 Target ESP (${data.esp}):`, target ? 'Connected' : 'NOT FOUND');
+        console.log(`📊 Connected ESPs:`, Object.keys(espClients));
+
         if (target && target.readyState === WebSocket.OPEN) {
           target.send(JSON.stringify(data));
-          console.log('🎮 Control sent to', data.esp);
+          console.log(`✅ Control sent to ${data.esp}:`, JSON.stringify(data));
         } else {
-          console.log('❌ ESP not connected:', data.esp);
+          console.log(`❌ ESP ${data.esp} not connected or not ready`);
         }
 
         return;
@@ -79,9 +83,12 @@ function createWebSocketServer(port) {
           // Broadcast data from cache instead of raw incoming data
           const cachedData = espDataCache.getCacheData()[data.esp];
           if (cachedData) {
-            broadcast(wss, { ...cachedData, type: 'data' });
+            broadcast(wss, { ...cachedData, type: 'data', esp: data.esp });
             console.log('📊 Cached data broadcasted for', data.esp);
           }
+          
+          // Also broadcast status as ONLINE
+          broadcast(wss, { type: 'status', esp: data.esp, status: 'ONLINE' });
         } catch (error) {
           console.error('❌ Error caching ESP data:', error.message);
         }
@@ -102,6 +109,9 @@ function createWebSocketServer(port) {
       });
     });
   });
+
+
+  return espClients;
 }
 
 function broadcast(wss, data) {

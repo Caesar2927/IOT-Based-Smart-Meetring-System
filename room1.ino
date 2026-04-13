@@ -52,7 +52,7 @@ float readVoltage() {
   for(int i=0;i<200;i++){
     float v = analogRead(VOLT_PIN) * (3.3 / 4095.0);
     sum += v * v;
-  }
+  }       
 
   return sqrt(sum / 200.0) * 80 * voltageCal;
 }

@@ -1,22 +1,45 @@
 const dotenv = require('dotenv');
+
+// Load environment variables FIRST before importing other modules
+dotenv.config();
+
 const connectDatabase = require('./db');
 const createWebSocketServer = require('./wsServer');
 const espDataCache = require('./services/espDataCache');
+const billingManager = require('./services/billingManager');
+const tariffFetcher = require('./services/tariffFetcher');
+const httpServer = require('./httpServer');
 
-dotenv.config();
-
-const PORT = process.env.PORT || 8080;
+const WS_PORT = process.env.WS_PORT || 8080;
+const HTTP_PORT = process.env.HTTP_PORT || 3000;
 
 async function startServer() {
   try {
     await connectDatabase(process.env.MONGODB_URI);
-    createWebSocketServer(PORT);
+    
+    // Create WebSocket server and get the espClients reference
+    const espClients = createWebSocketServer(WS_PORT);
 
     // Start periodic saving of ESP data to MongoDB
     espDataCache.startPeriodicSave();
     console.log('⏰ Started periodic data saving (every 5 seconds)');
 
-    console.log(`✅ Smart Energy Server running on port ${PORT}`);
+    // Initialize billing manager with midnight cron job
+    billingManager.startMidnightCron();
+    console.log('💳 Billing manager initialized with midnight cron');
+
+    // Start tariff fetcher to get price every 15 minutes from Global Server
+    await tariffFetcher.startPriceFetchCron();
+    console.log('💰 Tariff fetcher initialized (fetches price every 15 minutes)');
+
+    // Start HTTP control server
+    httpServer.setEspClients(espClients);
+    httpServer.setTariffFetcher(tariffFetcher);
+    httpServer.listen(HTTP_PORT, () => {
+      console.log(`🌐 HTTP control server running on port ${HTTP_PORT}`);
+    });
+
+    console.log(`✅ Smart Energy Services running (WS: ${WS_PORT}, HTTP: ${HTTP_PORT})`);
   } catch (error) {
     console.error('❌ Server start failed:', error);
     process.exit(1);
@@ -29,11 +52,15 @@ startServer();
 process.on('SIGINT', () => {
   console.log('🛑 Shutting down server...');
   espDataCache.stopPeriodicSave();
+  billingManager.stopMidnightCron();
+  tariffFetcher.stopPriceFetchCron();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   console.log('🛑 Shutting down server...');
   espDataCache.stopPeriodicSave();
+  billingManager.stopMidnightCron();
+  tariffFetcher.stopPriceFetchCron();
   process.exit(0);
 });

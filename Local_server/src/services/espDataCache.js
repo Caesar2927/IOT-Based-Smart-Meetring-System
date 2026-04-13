@@ -1,5 +1,6 @@
 const { RoomStats } = require('../models');
 const globalSender = require('./globalSender');
+const billingManager = require('./billingManager');
 
 class EspDataCache {
   constructor() {
@@ -32,11 +33,23 @@ class EspDataCache {
       current: data.current || 0,
       pf: data.pf || 0,
       power: data.power || 0,
-      switches: data.switches || this.cache[espId].switches
+      switches: data.switches || this.cache[espId].switches,
+      energy: data.energy || 0,
+      cost: data.cost || 0,
+      phase: data.phase || 0,
+      load: data.load || 'Unknown'
     };
 
     // Send to global server
     this.sendToGlobalServer(espId);
+
+    // Update billing manager for daily statistics
+    billingManager.updateRoomStats(espId, {
+      voltage: data.voltage,
+      pf: data.pf,
+      power: data.power,
+      energy: data.energy
+    });
   }
 
   // Send data to global server
@@ -46,13 +59,13 @@ class EspDataCache {
 
     const payload = {
       esp: data.roomId,
-      current: data.current,
       voltage: data.voltage,
+      current: data.current,
       power: data.power,
-      status: 'ONLINE',
-      time: new Date().toLocaleTimeString(),
-      receivedAt: new Date(),
       pf: data.pf,
+      phase: data.phase || 0,
+      energy: data.energy || 0,
+      cost: data.cost || 0,
       load: data.load || 'Unknown'
     };
 
@@ -103,6 +116,7 @@ class EspDataCache {
     try {
       await Promise.all(savePromises);
       console.log('💾 RoomStats saved to database for all ESPs');
+      console.log('📊 Saved Data:', JSON.stringify(cacheData, null, 2));
     } catch (error) {
       console.error('❌ Error saving RoomStats batch:', error.message);
     }
