@@ -1,0 +1,268 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: 0.3s;
+}
+
+.app {
+  min-height: 100vh;
+  transition: 0.3s;
+}
+
+.app.dark {
+  background: #0f172a;
+  color: white;
+}
+
+.app.light {
+  background: #f1f5f9;
+  color: #111;
+}
+
+header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #22c55e;
+}
+
+header h1 {
+  font-size: 2em;
+}
+
+.toggle-btn {
+  padding: 10px 15px;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: 0.3s;
+}
+
+.toggle-btn:hover {
+  background: #16a34a;
+  transform: scale(1.05);
+}
+
+main {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 80px);
+}
+
+/* Container */
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Home Container */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  width: 100%;
+  max-width: 750px;
+}
+
+/* Rooms Row */
+.rooms-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* Card */
+.card {
+  background: #1e293b;
+  padding: 15px;
+  width: 100%;
+  max-width: 350px;
+  border-radius: 15px;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  transition: 0.3s;
+  text-align: center;
+}
+
+.card:hover {
+  transform: scale(1.02);
+}
+
+.app.light .card {
+  background: white;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.card h2 {
+  margin-bottom: 10px;
+  font-size: 1.3em;
+}
+
+/* Status */
+.status {
+  margin: 5px 0;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
+  display: inline-block;
+  font-size: 0.9em;
+}
+
+.online {
+  background: #22c55e;
+  color: white;
+}
+
+.offline {
+  background: #ef4444;
+  color: white;
+}
+
+/* Gauge */
+.gauge {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  margin: 12px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  background: conic-gradient(#22c55e 0deg, #1e293b 0deg);
+  transition: 0.5s;
+}
+
+.app.light .gauge {
+  background: conic-gradient(#22c55e 0deg, #e2e8f0 0deg);
+}
+
+/* Buttons */
+button {
+  padding: 6px 10px;
+  margin: 4px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: 0.3s;
+}
+
+.btn-on {
+  background: #22c55e;
+  color: white;
+}
+
+.btn-on:hover {
+  background: #16a34a;
+  transform: scale(1.05);
+}
+
+.btn-off {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-off:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.btn-back {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-back:hover {
+  background: #2563eb;
+}
+
+.btn-view {
+  background: #8b5cf6;
+  color: white;
+  padding: 8px 12px;
+  font-size: 0.9em;
+}
+
+.btn-view:hover {
+  background: #7c3aed;
+}
+
+/* Values */
+.value {
+  margin-top: 10px;
+  text-align: left;
+  font-size: 0.9em;
+  line-height: 1.6;
+  padding: 0 10px;
+}
+
+.value p {
+  margin: 5px 0;
+}
+
+.footer {
+  margin-top: 8px;
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+/* Warning */
+.warning {
+  border: 3px solid #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+/* Room and Home Controls */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.back-button {
+  display: block;
+  margin: 20px auto;
+}
+
+.room-stats-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  gap: 0;
+}
+
+.room-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
