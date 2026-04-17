@@ -1,7 +1,48 @@
 /**
  * Fuzzy Logic Engine - Mamdani Inference System for DSM
  * Local_server: Evaluates grid + appliance data to determine load shedding
+ * Rules are dynamically loaded from dsm-rulebase.xlsx
  */
+
+const XLSX = require('xlsx');
+const path = require('path');
+
+// Load rules from Excel file once at startup
+let loadedRules = [];
+const rulesFile = path.join(__dirname, '../../dsm-rulebase.xlsx');
+
+/**
+ * Load DSM rules from Excel file
+ */
+function loadRulesFromExcel() {
+  try {
+    const workbook = XLSX.readFile(rulesFile);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(worksheet);
+    
+    // Parse rows into rule objects
+    loadedRules = rows.map((row, index) => ({
+      ruleId: row['Rule ID'] || index + 1,
+      conditions: {
+        gridFrequency: row['Grid Frequency'] || null,
+        gridStress: row['Grid Stress'] || null,
+        gridPrice: row['Grid Price'] || null,
+        peakFlag: row['Peak Flag'] || null,
+        globalPowerFactor: row['Global Power Factor'] || null,
+        loadImportance: row['Load Importance'] || null,
+        localPowerFactor: row['Local Power Factor'] || null,
+        loadPower: row['Load Power'] || null,
+      },
+      outcome: row['Outcome (Action)'] || 'Keep_On',
+    }));
+    
+    console.log(`✅ Loaded ${loadedRules.length} rules from dsm-rulebase.xlsx`);
+    return loadedRules;
+  } catch (error) {
+    console.error('❌ Error loading rules from Excel:', error.message);
+    return [];
+  }
+}
 
 /**
  * Triangular Membership Function
@@ -36,6 +77,7 @@ function trapezoidal(x, a, b, c, d) {
 
 /**
  * GLOBAL INPUTS FUZZIFICATION
+ * Defined based on Excel rule requirements
  */
 const GlobalInputs = {
   // gridFrequency (Hz) [Domain: 49.0 to 51.0]
@@ -73,6 +115,7 @@ const GlobalInputs = {
 
 /**
  * LOCAL INPUTS FUZZIFICATION
+ * Defined based on Excel rule requirements
  */
 const LocalInputs = {
   // loadImportance [Domain: 1.0 to 10.0]
@@ -163,65 +206,74 @@ function fuzzifyLocal(localData) {
 }
 
 /**
- * INFERENCE ENGINE - Evaluate fuzzy rules
+ * DYNAMIC INFERENCE ENGINE - Evaluate fuzzy rules from Excel
+ * Each rule is loaded from the Excel file
+ * Conditions are combined using AND logic (Min operator)
  */
 function inferenceEngine(fuzzGlobal, fuzzLocal) {
   const rules = [];
+  const matchedRules = [];
 
-  // RULE 1: IF (gridFrequency IS Emergency_Low) AND (loadImportance IS NOT Essential) THEN cutScore IS Force_Cut
-  const rule1 = Math.min(
-    fuzzGlobal.gridFrequency.Emergency_Low,
-    1 - fuzzLocal.loadImportance.Essential // NOT Essential
-  );
-  rules.push({ Force_Cut: rule1 });
+  // Evaluate each rule from the Excel file
+  loadedRules.forEach((rule) => {
+    const conditions = [];
+    const ruleConditionValues = [];
 
-  // RULE 2: IF (gridStress IS Critical) AND (loadPower IS Heavy) AND (loadImportance IS Flexible) THEN cutScore IS Force_Cut
-  const rule2 = Math.min(
-    Math.min(fuzzGlobal.gridStress.Critical, fuzzLocal.loadPower.Heavy),
-    fuzzLocal.loadImportance.Flexible
-  );
-  rules.push({ Force_Cut: rule2 });
+    // Check Global Conditions
+    if (rule.conditions.gridFrequency && GlobalInputs.gridFrequency[rule.conditions.gridFrequency]) {
+      conditions.push(fuzzGlobal.gridFrequency[rule.conditions.gridFrequency]);
+      ruleConditionValues.push(fuzzGlobal.gridFrequency[rule.conditions.gridFrequency]);
+    }
+    if (rule.conditions.gridStress && GlobalInputs.gridStress[rule.conditions.gridStress]) {
+      conditions.push(fuzzGlobal.gridStress[rule.conditions.gridStress]);
+      ruleConditionValues.push(fuzzGlobal.gridStress[rule.conditions.gridStress]);
+    }
+    if (rule.conditions.gridPrice && GlobalInputs.gridPrice[rule.conditions.gridPrice]) {
+      conditions.push(fuzzGlobal.gridPrice[rule.conditions.gridPrice]);
+      ruleConditionValues.push(fuzzGlobal.gridPrice[rule.conditions.gridPrice]);
+    }
+    if (rule.conditions.peakFlag && GlobalInputs.peakFlag[rule.conditions.peakFlag]) {
+      conditions.push(fuzzGlobal.peakFlag[rule.conditions.peakFlag]);
+      ruleConditionValues.push(fuzzGlobal.peakFlag[rule.conditions.peakFlag]);
+    }
+    if (rule.conditions.globalPowerFactor && GlobalInputs.globalPowerFactor[rule.conditions.globalPowerFactor]) {
+      conditions.push(fuzzGlobal.globalPowerFactor[rule.conditions.globalPowerFactor]);
+      ruleConditionValues.push(fuzzGlobal.globalPowerFactor[rule.conditions.globalPowerFactor]);
+    }
 
-  // RULE 3: IF (gridPrice IS Surge_Pricing) AND (peakFlag IS Peak_Hours) AND (loadImportance IS Trivial) THEN cutScore IS Force_Cut
-  const rule3 = Math.min(
-    Math.min(fuzzGlobal.gridPrice.Surge_Pricing, fuzzGlobal.peakFlag.Peak_Hours),
-    fuzzLocal.loadImportance.Trivial
-  );
-  rules.push({ Force_Cut: rule3 });
+    // Check Local Conditions
+    if (rule.conditions.loadImportance && LocalInputs.loadImportance[rule.conditions.loadImportance]) {
+      conditions.push(fuzzLocal.loadImportance[rule.conditions.loadImportance]);
+      ruleConditionValues.push(fuzzLocal.loadImportance[rule.conditions.loadImportance]);
+    }
+    if (rule.conditions.localPowerFactor && LocalInputs.localPowerFactor[rule.conditions.localPowerFactor]) {
+      conditions.push(fuzzLocal.localPowerFactor[rule.conditions.localPowerFactor]);
+      ruleConditionValues.push(fuzzLocal.localPowerFactor[rule.conditions.localPowerFactor]);
+    }
+    if (rule.conditions.loadPower && LocalInputs.loadPower[rule.conditions.loadPower]) {
+      conditions.push(fuzzLocal.loadPower[rule.conditions.loadPower]);
+      ruleConditionValues.push(fuzzLocal.loadPower[rule.conditions.loadPower]);
+    }
 
-  // RULE 4: IF (gridPrice IS Expensive) AND (loadImportance IS Flexible) AND (loadPower IS Heavy) THEN cutScore IS Moderate_Shed_Risk
-  const rule4 = Math.min(
-    Math.min(fuzzGlobal.gridPrice.Expensive, fuzzLocal.loadImportance.Flexible),
-    fuzzLocal.loadPower.Heavy
-  );
-  rules.push({ Moderate_Shed_Risk: rule4 });
+    // Calculate rule activation (AND logic - minimum of all conditions)
+    if (conditions.length > 0) {
+      const ruleActivation = Math.min(...ruleConditionValues);
 
-  // RULE 5: IF (gridPrice IS Cheap) THEN cutScore IS Keep_On
-  const rule5 = fuzzGlobal.gridPrice.Cheap;
-  rules.push({ Keep_On: rule5 });
+      // Store the rule's output
+      const ruleOutput = {
+        [rule.outcome]: ruleActivation,
+      };
 
-  // RULE 6: IF (globalPowerFactor IS Lagging_Bad) AND (localPowerFactor IS Highly_Inductive) THEN cutScore IS Force_Cut
-  const rule6 = Math.min(
-    fuzzGlobal.globalPowerFactor.Lagging_Bad,
-    fuzzLocal.localPowerFactor.Highly_Inductive
-  );
-  rules.push({ Force_Cut: rule6 });
+      rules.push(ruleOutput);
+      matchedRules.push({
+        ruleId: rule.ruleId,
+        activation: ruleActivation,
+        outcome: rule.outcome,
+      });
+    }
+  });
 
-  // RULE 7: IF (globalPowerFactor IS Lagging_Bad) AND (localPowerFactor IS Resistive) THEN cutScore IS Keep_On
-  const rule7 = Math.min(
-    fuzzGlobal.globalPowerFactor.Lagging_Bad,
-    fuzzLocal.localPowerFactor.Resistive
-  );
-  rules.push({ Keep_On: rule7 });
-
-  // RULE 8: IF (loadImportance IS Essential) AND (gridFrequency IS NOT Emergency_Low) THEN cutScore IS Keep_On
-  const rule8 = Math.min(
-    fuzzLocal.loadImportance.Essential,
-    1 - fuzzGlobal.gridFrequency.Emergency_Low // NOT Emergency_Low
-  );
-  rules.push({ Keep_On: rule8 });
-
-  // Aggregate rule outputs by membership type
+  // Aggregate rule outputs by membership type (Max operator)
   const aggregated = {
     Keep_On: 0,
     Moderate_Shed_Risk: 0,
@@ -234,7 +286,10 @@ function inferenceEngine(fuzzGlobal, fuzzLocal) {
     });
   });
 
-  return aggregated;
+  return {
+    aggregated,
+    matchedRules, // For debugging
+  };
 }
 
 /**
@@ -316,8 +371,10 @@ function evaluateLoad(globalData, localData, previousAction = null) {
     const fuzzGlobal = fuzzifyGlobal(globalData);
     const fuzzLocal = fuzzifyLocal(localData);
 
-    // 2. Inference
-    const aggregated = inferenceEngine(fuzzGlobal, fuzzLocal);
+    // 2. Inference (Dynamic from Excel)
+    const inferenceResult = inferenceEngine(fuzzGlobal, fuzzLocal);
+    const aggregated = inferenceResult.aggregated;
+    const matchedRules = inferenceResult.matchedRules;
 
     // 3. Defuzzification
     const cutScore = defuzzify(aggregated);
@@ -332,6 +389,7 @@ function evaluateLoad(globalData, localData, previousAction = null) {
       relayAction,
       timestamp: Date.now(),
       ruleEvaluations: aggregated, // For debugging
+      matchedRules: matchedRules.slice(0, 5), // Top 5 matched rules for debugging
     };
   } catch (error) {
     console.error("❌ Fuzzy engine error:", error);
@@ -351,4 +409,8 @@ module.exports = {
   inferenceEngine,
   defuzzify,
   getRelayAction,
+  loadRulesFromExcel,
 };
+
+// Load rules from Excel when module is imported
+loadRulesFromExcel();

@@ -41,22 +41,15 @@ class DSMManager {
       });
 
       this.globalParams = response.data;
-      console.log(
-        `📊 Global params updated:`,
-        `Freq=${this.globalParams.gridFrequency.toFixed(2)}Hz`,
-        `Stress=${this.globalParams.gridStress.toFixed(2)}`,
-        `Price=₹${this.globalParams.gridPrice.toFixed(2)}`
-      );
+      console.log('\n📡 [Global Server Data] Received:');
+      console.log(`   Freq: ${this.globalParams.gridFrequency.toFixed(2)}Hz | Stress: ${this.globalParams.gridStress.toFixed(2)} | Price: ₹${this.globalParams.gridPrice.toFixed(2)} | PF: ${this.globalParams.globalPowerFactor.toFixed(3)}`);
     } catch (error) {
       if (error.code === 'ECONNREFUSED') {
-        console.warn(
-          '⚠️ DSM: Cannot connect to Global Server. Using default parameters.'
-        );
+        console.warn('⚠️ Cannot connect to Global Server.');
       } else {
-        console.warn('⚠️ DSM: Failed to fetch global parameters:', error.message);
+        console.warn('⚠️ Failed to fetch global parameters');
       }
 
-      // Use default parameters if connection fails
       if (!this.globalParams) {
         this.globalParams = {
           timestamp: Date.now(),
@@ -137,13 +130,15 @@ class DSMManager {
       return [];
     }
 
-    return appliances.map((appliance) => {
+    const evaluations = appliances.map((appliance) => {
       const applianceWithRoom = {
         ...appliance,
         roomId,
       };
       return this.evaluateAppliance(applianceWithRoom);
     });
+
+    return evaluations;
   }
 
   /**

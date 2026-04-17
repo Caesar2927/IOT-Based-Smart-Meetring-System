@@ -8,6 +8,7 @@ const createWebSocketServer = require('./wsServer');
 const espDataCache = require('./services/espDataCache');
 const billingManager = require('./services/billingManager');
 const tariffFetcher = require('./services/tariffFetcher');
+const dsmManager = require('./services/dsmManager');
 const httpServer = require('./httpServer');
 
 const WS_PORT = process.env.WS_PORT || 8080;
@@ -32,9 +33,14 @@ async function startServer() {
     await tariffFetcher.startPriceFetchCron();
     console.log('💰 Tariff fetcher initialized (fetches price every 15 minutes)');
 
+    // Start DSM Manager to fetch global params and evaluate loads
+    dsmManager.startGlobalParamsFetch();
+    console.log('⚡ DSM Manager initialized (fetches global params every 10 seconds)');
+
     // Start HTTP control server
     httpServer.setEspClients(espClients);
     httpServer.setTariffFetcher(tariffFetcher);
+    httpServer.setDsmManager(dsmManager);
     httpServer.listen(HTTP_PORT, () => {
       console.log(`🌐 HTTP control server running on port ${HTTP_PORT}`);
     });
@@ -54,6 +60,7 @@ process.on('SIGINT', () => {
   espDataCache.stopPeriodicSave();
   billingManager.stopMidnightCron();
   tariffFetcher.stopPriceFetchCron();
+  dsmManager.stopGlobalParamsFetch();
   process.exit(0);
 });
 

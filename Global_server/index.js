@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const statsRoutes = require('./routes/stats');
 const billingRoutes = require('./routes/billing');
 const tariffRoutes = require('./routes/tariff');
+const dsmRoutes = require('./routes/dsm');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/tariff', tariffRoutes);
+app.use('/api/dsm', dsmRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
